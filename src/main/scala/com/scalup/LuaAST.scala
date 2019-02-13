@@ -90,6 +90,13 @@ case class FunctionBody(parameters: ParameterList, body: Block) extends LuaAST
 
 case class FunctionExpression(functionBody: FunctionBody) extends Expression
 
+
+sealed trait PrefixPart
+case class NamePrefixPart(name: String) extends PrefixPart
+case class IndexPrefixPart(prefix: Expression) extends PrefixPart
+case class FunctionCallPrefixPart(args: List[Expression]) extends PrefixPart
+case class FunctionCallWithSelfPrefixPart(name: String, args: List[Expression]) extends PrefixPart
+
 sealed trait PrefixExpression extends Expression
 
 sealed trait Variable extends PrefixExpression
