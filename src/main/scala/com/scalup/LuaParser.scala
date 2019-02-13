@@ -38,7 +38,8 @@ object LuaParser extends LuaLexer {
       case (list, last) => Block((list ++ last).toList)
     }
 
-  private def chunk[_: P]: P[Block] = P(block ~ End)
+  //The Pass() ~ part makes sure that whitespaces/comments at the start of the code are ignored
+  private def chunk[_: P]: P[Block] = P(Pass() ~ block ~ End)
 
   private def breakStatement[_: P]: P[LastStatement] = `break`.map(_ => BreakStatement)
 
