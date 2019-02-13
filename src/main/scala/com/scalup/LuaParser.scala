@@ -5,11 +5,9 @@ import java.nio.file.Files
 
 import com.scalup.LuaToken._
 import fastparse._
-import JavaWhitespace._
+import LuaWhitespace._
 
 object LuaParser extends LuaLexer {
-  //TODO: Skip multiline comments
-
   private def name[_: P]: P[String] = P(identifier.map(_.name))
 
   private def luaNil[_: P]: P[Expression] = P(`nil`.map(_ => LuaNil))
@@ -29,7 +27,7 @@ object LuaParser extends LuaLexer {
     P(`do` ~ block ~ `end`).map(DoBlock)
 
   private def statement[_: P]: P[Statement] =
-    P(functionCall |  forLoop | globalDeclaration | doBlock | whileLoop | repeatLoop | ifStatement |
+    P(functionCall | forLoop | globalDeclaration | doBlock | whileLoop | repeatLoop | ifStatement |
       forEachLoop | functionDefinition | localFunctionDefinition | localDeclaration)
 
 
@@ -126,9 +124,6 @@ object LuaParser extends LuaLexer {
 
   private def constants[_: P]: P[Expression] = luaNil | luaNumber | luaString | luaTrue | luaFalse | varArgs
 
-  //TODO:
-  //lazy val exponentiations[_: P]: P[Expression] = ???
-
   private def unaryOperators[_: P]: P[Expression] = P(operatorToken(List(() => `#`, () => `-`, () => `!`)) ~ unaryTerms).map {
     case (NUMBER_SIGN, expr) => UnaryCount(expr)
     case (MINUS, expr) => UnaryMinus(expr)
@@ -136,22 +131,31 @@ object LuaParser extends LuaLexer {
     case _ => ??? // Can't happen
   }
 
-
   private def unaryTerms[_: P]: P[Expression] =
     P(unaryOperators | prefixExpression | constants | anonymousFunction | tableConstructor | (`(` ~ orOperators ~ `)`))
 
+  //TODO: The precedence here is not correct, for example 3^-3^4 vs 3^(-3)^4
+  private def exponentiations[_: P]: P[Expression] =
+    P(unaryTerms ~ (`^` ~ exponentiations).rep).map {
+      case (first, Seq()) => first
+      case (first, rest) =>
+        val together = first +: rest
+        together.slice(0, together.size - 1).foldRight(together.last) {
+          case (left, right) => Exponentiation(left, right)
+        }
+    }
+
   private def factors[_: P]: P[Expression] =
-    listOfOperators(factors, unaryTerms, List(() => `*`, () => `/`, () => `%`))
+    listOfOperators(factors, exponentiations, List(() => `*`, () => `/`, () => `%`))
 
   private def terms[_: P]: P[Expression] =
     listOfOperators(terms, factors, List(() => `+`, () => `-`))
 
-  //TODO: This is right associative
   private def concatenations[_: P]: P[Expression] =
     listOfOperators(concatenations, terms, List(() => `..`))
 
   private def comparisons[_: P]: P[Expression] =
-    listOfOperators(comparisons, concatenations, List(() => `<`, () => `<=`, () => `>`, () => `>=`, () => `==`, () => `!=`))
+    listOfOperators(comparisons, concatenations, List(() => `<=`, () => `<`, () => `>=`, () => `>`, () => `==`, () => `!=`))
 
   private def andOperators[_: P]: P[Expression] =
     listOfOperators(andOperators, comparisons, List(() => `&&`))
@@ -268,12 +272,28 @@ object LuaParser extends LuaLexer {
       case (first, rest) => first :: rest.toList
     }
 
-  def main(args: Array[String]): Unit = {
-    val input = new String(Files.readAllBytes(new File("test.lua").toPath)).trim
-    parse(input, chunk(_)) match {
-      case Parsed.Success(value, _) => println("SUCCESS: " + value)
-      case Parsed.Failure(label, _, extra) => println("FAILURE", label, extra)
-      case _ => println("HMMM")
+  def parseFolder(folder: File): Unit = {
+    import scala.collection.JavaConverters._
+    val start = System.currentTimeMillis()
+    for (path <- Files.walk(folder.toPath).iterator().asScala;
+         f = path.toFile if f.getName.endsWith(".lua")) {
+      val input = new String(Files.readAllBytes(path))
+      parse(input, chunk(_)) match {
+        case Parsed.Success(value, _) => println("Successfully parsed file: " + f.getName)
+        case Parsed.Failure(label, _, extra) => println("Failed to parse file: " + f.getName)
+      }
     }
+    println(System.currentTimeMillis() - start)
+  }
+
+  def main(args: Array[String]): Unit = {
+    //parseFolder(new File("C:\\server\\garrysmod\\gamemodes"))
+    val input = new String(Files.readAllBytes(new File("test.lua").toPath)).trim
+    val start = System.currentTimeMillis()
+    parse(input, chunk(_)) match {
+      case Parsed.Success(value, _) => println("SUCCESS: ", value)
+      case Parsed.Failure(label, _, extra) => println("FAILURE", label, extra)
+    }
+    println(System.currentTimeMillis() - start)
   }
 }

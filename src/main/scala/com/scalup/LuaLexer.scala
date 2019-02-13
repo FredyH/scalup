@@ -8,7 +8,7 @@ import NoWhitespace._
 
 trait LuaLexer {
   def identifier[_: P]: P[IDENTIFIER] =
-    P(CharIn("A-Za-z0-9_").rep(1)).!
+    P(CharIn("A-Za-z_")~CharIn("A-Za-z_0-9").rep).!
       .filter(n => !keyWords.contains(n))
       .map(IDENTIFIER)
 
@@ -66,7 +66,7 @@ trait LuaLexer {
   def `#`[_: P]: P[KeywordOrOperator] = P("#").map(_ => NUMBER_SIGN)
   def `*`[_: P]: P[KeywordOrOperator] = P("*").map(_ => MULTIPLY)
   def `/`[_: P]: P[KeywordOrOperator] = P("/").map(_ => DIVIDED_BY)
-  def `^`[_: P]: P[KeywordOrOperator] = P("^").map(_ => POW)
+  def `^`[_: P]: P[Unit] = P("^")
   def `..`[_: P]: P[KeywordOrOperator] = P("..").map(_ => CONCATENATION)
   def `.`[_: P]: P[Unit] = P(".")
   def `:`[_: P]: P[Unit] = P(":")
@@ -76,30 +76,29 @@ trait LuaLexer {
   def `(`[_: P]: P[Unit] = P("(")
   def `)`[_: P]: P[Unit] = P(")")
 
+  //TODO: Strings don't handle things like \\" correctly, which should close the string
   def doubleQuotedString[_: P]: P[STRING] =
-    P("\"" ~ (CharPred(c => c != '"' && c != '\n' && c != '\r') | "\\\"").rep ~ "\"").!
+    P("\"" ~ ("\\\"" | CharPred(c => c != '"' && c != '\n' && c != '\r')).rep ~ "\"").!
       .map{ str =>
-        val content = StringEscapeUtils.escapeJava(str.slice(1, str.length - 1))
-        STRING(StringEscapeUtils.escapeJava(content), str)
+        val content = StringEscapeUtils.unescapeJava(str.slice(1, str.length - 1))
+        STRING(StringEscapeUtils.unescapeJava(content), str)
       }
 
   def singleQuotedString[_: P]: P[STRING] =
-    P("'" ~ (CharPred(c => c != ''' && c != '\n' && c != '\r') | "\\\"").rep ~ "'").!
+    P("'" ~ ("\\\"" | CharPred(c => c != ''' && c != '\n' && c != '\r')).rep ~ "'").!
       .map{ str =>
-        val content = StringEscapeUtils.escapeJava(str.slice(1, str.length - 1))
-        STRING(StringEscapeUtils.escapeJava(content), str)
+        val content = StringEscapeUtils.unescapeJava(str.slice(1, str.length - 1))
+        STRING(StringEscapeUtils.unescapeJava(content), str)
       }
 
-
-  /* TODO
   def multilineString[_: P]: P[STRING] =
-    P("[" ~ ((!"[[") ~ AnyChar).rep  /*~ !"\\"*/ ~ "]").!.map{ str =>
-      val content = str.slice(1, str.length - 1)
+    P("[[" ~ ((!"]]") ~ AnyChar).rep ~ "]]").!.map{ str =>
+      val content = str.slice(2, str.length - 2)
       STRING(content, str)
-    }*/
+    }
 
   def string[_: P]: P[STRING] =
-    P(singleQuotedString | doubleQuotedString)
+    P(singleQuotedString | doubleQuotedString | multilineString)
 
 
 }
