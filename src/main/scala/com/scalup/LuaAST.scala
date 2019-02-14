@@ -8,6 +8,8 @@ sealed trait BinaryOperator extends Expression {
   def left: Expression
 
   def right: Expression
+
+  def token: KeywordOrOperator
 }
 
 object BinaryOperator {
@@ -34,6 +36,10 @@ object BinaryOperator {
 
 sealed trait UnaryOperator extends Expression {
   def subExpression: Expression
+
+  override def precedence: Int = 2
+
+  def token: LuaToken
 }
 
 sealed trait Statement extends LuaAST
@@ -50,7 +56,9 @@ case object BreakStatement extends LastStatement
 
 case class ReturnStatement(expressions: List[Expression]) extends LastStatement
 
-sealed trait Expression extends LuaAST
+sealed trait Expression extends LuaAST {
+  def precedence: Int = 9
+}
 
 sealed trait FunctionCall extends PrefixExpression with Statement {
   def prefixExpression: PrefixExpression
@@ -80,7 +88,12 @@ case class ForEachLoop(variables: List[String], expressions: List[Expression], b
 
 case class Parameter(name: String) extends LuaAST
 
-case class ParameterList(parameters: List[Parameter], hasVarArgs: Boolean) extends LuaAST
+case class ParameterList(parameters: List[Parameter], hasVarArgs: Boolean) extends LuaAST {
+  def paramsWithVarArg: List[Parameter] = {
+    if (hasVarArgs) parameters :+ Parameter("...")
+    else parameters
+  }
+}
 
 case class FunctionName(name: List[String], withSelf: Boolean) extends LuaAST
 
@@ -127,44 +140,90 @@ sealed trait Field extends LuaAST {
 
 case class FieldWithoutIndex(value: Expression) extends Field
 
-case class FieldByIndex(key: Option[Expression], value: Expression) extends Field
+case class FieldByIndex(key: Expression, value: Expression) extends Field
 
 case class FieldByName(key: String, value: Expression) extends Field
 
 case class TableConstructor(fields: List[Field]) extends Expression
 
-case class Plus(left: Expression, right: Expression) extends BinaryOperator
 
-case class Minus(left: Expression, right: Expression) extends BinaryOperator
+case class Plus(left: Expression, right: Expression) extends BinaryOperator {
+  val token = PLUS
+  override val precedence = 4
+}
 
-case class Multiplication(left: Expression, right: Expression) extends BinaryOperator
+case class Minus(left: Expression, right: Expression) extends BinaryOperator {
+  val token = MINUS
+  override val precedence = 4
+}
 
-case class Division(left: Expression, right: Expression) extends BinaryOperator
+case class Multiplication(left: Expression, right: Expression) extends BinaryOperator {
+  val token = MULTIPLY
+  override val precedence = 3
+}
 
-case class Modulus(left: Expression, right: Expression) extends BinaryOperator
+case class Division(left: Expression, right: Expression) extends BinaryOperator {
+  val token = DIVIDED_BY
+  override val precedence = 3
+}
 
-case class Exponentiation(left: Expression, right: Expression) extends BinaryOperator
+case class Modulus(left: Expression, right: Expression) extends BinaryOperator {
+  val token = MODULUS
+  override val precedence = 3
+}
 
-case class Concatenation(left: Expression, right: Expression) extends BinaryOperator
+case class Exponentiation(left: Expression, right: Expression) extends BinaryOperator {
+  val token = POW
+  override val precedence = 1
+}
 
-case class LessThan(left: Expression, right: Expression) extends BinaryOperator
+case class Concatenation(left: Expression, right: Expression) extends BinaryOperator {
+  val token = CONCATENATION
+  override val precedence = 5
+}
 
-case class LessEquals(left: Expression, right: Expression) extends BinaryOperator
+case class LessThan(left: Expression, right: Expression) extends BinaryOperator {
+  val token = LESS_THAN
+  override val precedence = 6
+}
 
-case class GreaterThan(left: Expression, right: Expression) extends BinaryOperator
+case class LessEquals(left: Expression, right: Expression) extends BinaryOperator {
+  val token = LESS_EQUALS
+  override val precedence = 6
+}
 
-case class GreaterEquals(left: Expression, right: Expression) extends BinaryOperator
+case class GreaterThan(left: Expression, right: Expression) extends BinaryOperator {
+  val token = GREATER_THAN
+  override val precedence = 6
+}
 
-case class Equals(left: Expression, right: Expression) extends BinaryOperator
+case class GreaterEquals(left: Expression, right: Expression) extends BinaryOperator {
+  val token = GREATER_EQUALS
+  override val precedence = 6
+}
 
-case class NotEquals(left: Expression, right: Expression) extends BinaryOperator
+case class Equals(left: Expression, right: Expression) extends BinaryOperator {
+  val token = EQUALS
+  override val precedence = 6
+}
 
-case class And(left: Expression, right: Expression) extends BinaryOperator
+case class NotEquals(left: Expression, right: Expression) extends BinaryOperator {
+  val token = NOT_EQUALS
+  override val precedence = 6
+}
 
-case class Or(left: Expression, right: Expression) extends BinaryOperator
+case class And(left: Expression, right: Expression) extends BinaryOperator {
+  val token = LOGICAL_AND
+  override val precedence = 6
+}
 
-case class UnaryMinus(subExpression: Expression) extends UnaryOperator
+case class Or(left: Expression, right: Expression) extends BinaryOperator {
+  val token = LOGICAL_OR
+  override val precedence = 6
+}
 
-case class UnaryNot(subExpression: Expression) extends UnaryOperator
+case class UnaryMinus(subExpression: Expression) extends UnaryOperator { val token = MINUS }
 
-case class UnaryCount(subExpression: Expression) extends UnaryOperator
+case class UnaryNot(subExpression: Expression) extends UnaryOperator { val token = LOGICAL_NOT }
+
+case class UnaryCount(subExpression: Expression) extends UnaryOperator { val token = NUMBER_SIGN }

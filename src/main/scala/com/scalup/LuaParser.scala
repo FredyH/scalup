@@ -279,11 +279,18 @@ object LuaParser extends LuaLexer {
          f = path.toFile if f.getName.endsWith(".lua")) {
       val input = new String(Files.readAllBytes(path))
       parse(input, chunk(_)) match {
-        case Parsed.Success(value, _) => println("Successfully parsed file: " + f.getName)
-        case Parsed.Failure(label, _, extra) => println("Failed to parse file: " + f.getName)
+        case Parsed.Success(value, _) => //println("Successfully parsed file: " + f.getName)
+        case Parsed.Failure(label, _, extra) => println(s"Failed to parse file: ${f.getName}")
       }
     }
     println(System.currentTimeMillis() - start)
+  }
+
+  def parseString(s: String) = {
+    parse(s.trim(), chunk(_)) match {
+      case Parsed.Success(value, _) => Some(value)
+      case Parsed.Failure(label, _, extra) => println("FAILURE", label, extra); None
+    }
   }
 
   def main(args: Array[String]): Unit = {

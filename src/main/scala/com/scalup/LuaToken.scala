@@ -56,7 +56,7 @@ object LuaToken extends Enum[LuaToken] {
   case object MULTIPLY extends KeywordOrOperator("*")
   case object DIVIDED_BY extends KeywordOrOperator("/")
   case object POW extends KeywordOrOperator("^")
-  case object NUMBER_SIGN extends KeywordOrOperator("%")
+  case object NUMBER_SIGN extends KeywordOrOperator("#")
   case object CONCATENATION extends KeywordOrOperator("..")
   case object DOT extends KeywordOrOperator(".")
   case object COLON extends KeywordOrOperator(":")
