@@ -20,7 +20,7 @@ object LuaParser extends LuaLexer {
 
   private def varArgs[_: P]: P[Expression] = P(`...`.map(_ => VarArgs))
 
-  private def luaNumber[_: P]: P[Expression] = P(`number`.map(n => LuaNumber(n)))
+  private def luaNumber[_: P]: P[Expression] = P(`number`.map(n => LuaNumber(n.value, n.raw)))
 
 
   private def doBlock[_: P]: P[DoBlock] =
@@ -207,7 +207,7 @@ object LuaParser extends LuaLexer {
     P(selfFunctionCallPrefix | functionCallPrefix | indexDotPrefix | indexBracketsPrefix | Pass(Nil))
 
   private def fieldWithIndex[_: P]: P[Field] = P(`[` ~ expression ~ `]` ~ `=` ~ expression).map {
-    case (indexExpr, valueExpr) => FieldByIndex(Some(indexExpr), valueExpr)
+    case (indexExpr, valueExpr) => FieldByIndex(indexExpr, valueExpr)
   }
 
   private def fieldWithName[_: P]: P[Field] = P(name ~ `=` ~ expression).map {
@@ -294,11 +294,12 @@ object LuaParser extends LuaLexer {
   }
 
   def main(args: Array[String]): Unit = {
-    //parseFolder(new File("C:\\server\\garrysmod\\gamemodes"))
+   //parseFolder(new File("C:\\server\\garrysmod\\gamemodes"))
     val input = new String(Files.readAllBytes(new File("test.lua").toPath)).trim
     val start = System.currentTimeMillis()
     parse(input, chunk(_)) match {
       case Parsed.Success(value, _) => println("SUCCESS: ", value)
+        println(new Printer().printBlock(value))
       case Parsed.Failure(label, _, extra) => println("FAILURE", label, extra)
     }
     println(System.currentTimeMillis() - start)

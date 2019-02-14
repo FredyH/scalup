@@ -12,15 +12,15 @@ trait LuaLexer {
       .filter(n => !keyWords.contains(n))
       .map(IDENTIFIER)
 
-  def number[_: P] = {
+  def number[_: P]: P[NUMBER] = {
     def digits(min: Int = 0) = P(CharIn("0-9").rep(min))
     def plusOrMinus = CharIn("\\-+")
     def decimalPlaces = "." ~ digits(1) ~ exponentialPart.?
     def hexDigits(min: Int = 0) = P(CharIn("0-9A-F").rep(min))
     def exponentialPart = P(CharIn("eE") ~/ CharIn("\\-+").? ~ digits(1))
-    def hexNumber = P(StringIn("0x") ~/ hexDigits(1)).!.map(str => Integer.parseInt(str.substring(2), 16).toDouble)
-    def floatWithoutLeading = P(plusOrMinus.? ~ decimalPlaces.?).!.filter(_.nonEmpty).map(_.toDouble)
-    def float = P(plusOrMinus.? ~ digits(1) ~ decimalPlaces.?).!.filter(_.nonEmpty).map(_.toDouble)
+    def hexNumber = P(StringIn("0x") ~/ hexDigits(1)).!.map(str => NUMBER(Integer.parseInt(str.substring(2), 16).toDouble, str))
+    def floatWithoutLeading = P(plusOrMinus.? ~ decimalPlaces.?).!.filter(_.nonEmpty).map(str => NUMBER(str.toDouble, str))
+    def float = P(plusOrMinus.? ~ digits(1) ~ decimalPlaces.?).!.filter(_.nonEmpty).map(str => NUMBER(str.toDouble, str))
     P(hexNumber | floatWithoutLeading | float)
   }
 

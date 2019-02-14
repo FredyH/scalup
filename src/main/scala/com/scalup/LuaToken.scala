@@ -11,12 +11,14 @@ sealed trait LuaToken extends EnumEntry
 object LuaToken extends Enum[LuaToken] {
   sealed class KeywordOrOperator(val keywords: String*) extends LuaToken {
     private[scalup] def regex: Regex = keywords.map(s => "(" + Pattern.quote(s) + ")").mkString("|").r
+
+    override def toString: String = keywords.head
   }
 
 
   case class IDENTIFIER(name: String) extends LuaToken
   case class STRING(content: String, raw: String) extends LuaToken
-  case class NUMBER(number: Double) extends LuaToken
+  case class NUMBER(value: Double, raw: String) extends LuaToken
   case object MODULUS extends KeywordOrOperator("%")
   case object LESS_THAN extends KeywordOrOperator("<")
   case object LESS_EQUALS extends KeywordOrOperator("<=")
