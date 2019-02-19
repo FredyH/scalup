@@ -4,13 +4,25 @@ import com.scalup.Printer.PrinterConfig
 
 object Printer {
 
-  case class PrinterConfig(statementSeparator: String = "\n",
-                           blockOpener: String = "\n",
-                           blockCloser: String = "\n",
-                           indentString: String = "\t",
-                           listSeparator: String = ", ",
-                           padding: String = " ",
-                           wrapConditions: Boolean = true)
+  case class PrinterConfig(
+		statementSeparator: String = "\n",
+		blockOpener: String = "\n",
+		blockCloser: String = "\n",
+		indentString: String = "\t",
+		listSeparator: String = ", ",
+		padding: String = " ",
+		wrapConditions: Boolean = true
+	)
+
+	val MinifyPrinterConfig = PrinterConfig(
+		statementSeparator = ";",
+		blockOpener = " ",
+		blockCloser = ";",
+		indentString = "",
+		listSeparator = ",",
+		padding = "",
+		wrapConditions = false
+	)
 
 }
 
@@ -22,13 +34,6 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
     else
       printExpression(expression)
   }
-
-  private def wrapCondition(condition: Expression, indentIndex: Int): String = {
-    //Do not wrap by default! If it is wrapped in code it is an ExpressionAsPrefixExpression and is wrapped through that
-    printExpression(condition, indentIndex)
-    //wrapString(printExpression(condition, indentIndex))
-  }
-
 
   private def printField(field: Field): String = {
     field match {
@@ -107,6 +112,7 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
       case LocalDeclaration(names, expressionList) =>
         indent(names.mkString("local ", config.listSeparator, wrapInPadding("=") + expressionList.map(e => printExpression(e, indentIndex: Int))
           .mkString(config.listSeparator)))
+
       case lastStatement: LastStatement =>
         lastStatement match {
           case ContinueStatement => "continue"
@@ -117,16 +123,20 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
 
       case call: FunctionCall =>
         indent(printFunctionCall(call))
+
       case DoBlock(body) =>
         indent("do") + printBlock(body, indentIndex + 1) + indent("end")
+
       case WhileLoop(condition, body) =>
-        indent("while" + wrapCondition(condition, indentIndex) + "do") + printBlock(body, indentIndex + 1) + indent("end")
+        indent("while" + printExpression(condition, indentIndex) + "do") + printBlock(body, indentIndex + 1) + indent("end")
+
       case RepeatLoop(body, condition) =>
-        indent("repeat") + printBlock(body, indentIndex + 1) + indent("until") + wrapCondition(condition, indentIndex)
+        indent("repeat") + printBlock(body, indentIndex + 1) + indent("until") + printExpression(condition, indentIndex)
+
       case IfStatement(condition, body, elseIfs, elseBlock) =>
-        val ifHeader = indent("if" + config.padding + wrapCondition(condition, indentIndex) + config.padding + "then")
+        val ifHeader = indent("if" + config.padding + printExpression(condition, indentIndex) + config.padding + "then")
         val elseIfStrs = elseIfs.map{ elseIf =>
-          val elseIfHeader = indent("elseif" + config.padding + wrapCondition(condition, indentIndex) + config.padding + "then")
+          val elseIfHeader = indent("elseif" + config.padding + printExpression(condition, indentIndex) + config.padding + "then")
           elseIfHeader + printBlock(body, indentIndex + 1)
         }.mkString(config.statementSeparator)
         val elseStr = elseBlock.map { elseBlock =>
