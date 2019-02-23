@@ -13,25 +13,25 @@ sealed trait BinaryOperator extends Expression {
 }
 
 object BinaryOperator {
-  def fromLuaToken(token: LuaToken, left: Expression, right: Expression): BinaryOperator = {
-    val map = Map[LuaToken, (Expression, Expression) => BinaryOperator](
-      LOGICAL_OR -> Or,
-      LOGICAL_AND -> And,
-      GREATER_THAN -> GreaterThan,
-      GREATER_EQUALS -> GreaterEquals,
-      LESS_THAN -> LessThan,
-      LESS_EQUALS -> LessEquals,
-      NOT_EQUALS -> NotEquals,
-      EQUALS -> Equals,
-      CONCATENATION -> Concatenation,
-      PLUS -> Plus,
-      MINUS -> Minus,
-      MULTIPLY -> Multiplication,
-      DIVIDED_BY -> Division,
-      MODULUS -> Modulus
-    )
-    map(token)(left, right)
-  }
+  val tokenMap = Map[LuaToken, (Expression, Expression) => BinaryOperator](
+    LOGICAL_OR -> Or,
+    LOGICAL_AND -> And,
+    GREATER_THAN -> GreaterThan,
+    GREATER_EQUALS -> GreaterEquals,
+    LESS_THAN -> LessThan,
+    LESS_EQUALS -> LessEquals,
+    NOT_EQUALS -> NotEquals,
+    EQUALS -> Equals,
+    CONCATENATION -> Concatenation,
+    PLUS -> Plus,
+    MINUS -> Minus,
+    MULTIPLY -> Multiplication,
+    DIVIDED_BY -> Division,
+    MODULUS -> Modulus
+  )
+
+  def fromLuaToken(token: LuaToken, left: Expression, right: Expression): BinaryOperator = tokenMap(token)(left, right)
+
 }
 
 sealed trait UnaryOperator extends Expression {
@@ -40,6 +40,16 @@ sealed trait UnaryOperator extends Expression {
   override def precedence: Int = 8
 
   def token: LuaToken
+}
+
+object UnaryOperator {
+  val tokenMap = Map[LuaToken, Expression => UnaryOperator](
+    MINUS -> UnaryMinus,
+    LOGICAL_NOT -> UnaryNot,
+    NUMBER_SIGN -> UnaryCount
+  )
+
+  def fromLuaToken(token: LuaToken, expression: Expression): UnaryOperator = tokenMap(token)(expression)
 }
 
 sealed trait Statement extends LuaAST
@@ -232,9 +242,7 @@ case class Or(left: Expression, right: Expression) extends BinaryOperator {
   override val precedence = 2
 }
 
-case class UnaryMinus(subExpression: Expression) extends UnaryOperator {
-  val token = MINUS
-}
+case class UnaryMinus(subExpression: Expression) extends UnaryOperator { val token = MINUS }
 
 case class UnaryNot(subExpression: Expression) extends UnaryOperator { val token = LOGICAL_NOT }
 
