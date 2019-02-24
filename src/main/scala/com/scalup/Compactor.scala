@@ -45,9 +45,7 @@ class Compactor(config: CompactorConfig = CompactorConfig()) {
     }
 
     val globalVariables: Set[String] = globalVarWalker.visitBlock(block, null).toSet
-
-    // TODO: Handle cases such as `local hook = hook` so we don't replace the global hook ref but we still update the local ref
-
+    
     val localVariableReplacementNames =
       Iterator.from(0)
         .map(intToVarName)
