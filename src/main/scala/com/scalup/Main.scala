@@ -1,5 +1,5 @@
 package com.scalup
 
-class Main {
+object Main {
 
 }

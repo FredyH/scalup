@@ -6,6 +6,7 @@ import java.nio.file.Files
 import com.scalup.LuaToken._
 import fastparse._
 import LuaWhitespace._
+import com.scalup.visitors.{GlobalVariableVisitor, LocalVariableSubVisitor}
 
 object LuaParser extends LuaLexer {
   private def name[_: P]: P[String] = P(identifier.map(_.name))
@@ -132,7 +133,7 @@ object LuaParser extends LuaLexer {
   }
 
   private def unaryTerms[_: P]: P[Expression] =
-    P(unaryOperators | prefixExpression | constants | anonymousFunction | tableConstructor | (`(` ~ orOperators ~ `)`))
+    P(prefixExpression | unaryOperators | constants | anonymousFunction | tableConstructor | (`(` ~ orOperators ~ `)`))
 
   //TODO: The precedence here is not correct, for example 3^-3^4 vs 3^(-3)^4
   private def exponentiations[_: P]: P[Expression] =
@@ -299,7 +300,8 @@ object LuaParser extends LuaLexer {
     val start = System.currentTimeMillis()
     parse(input, chunk(_)) match {
       case Parsed.Success(value, _) => println("SUCCESS: ", value)
-        println(new Printer().printBlock(value))
+        val compacted = new Compactor().compactBlock(value)
+        println(new GlobalVariableVisitor().visitBlock(value, ()))
       case Parsed.Failure(label, _, extra) => println("FAILURE", label, extra)
     }
     println(System.currentTimeMillis() - start)
