@@ -241,13 +241,13 @@ object LuaParser extends LuaLexer {
     FunctionExpression(body)
   }
 
-  private def parameterListWithVarArgs[_: P]: P[ParameterList] = P(nameList ~ (`,` ~ `...`).?).map {
-    list => ParameterList(list.map(Parameter), true)
+  private def parameterListWithVarArgs[_: P]: P[ParameterList] = P(nameList ~ (`,` ~ `...`.!).?).map {
+    case (list, opt) => ParameterList(list.map(Parameter), opt.isDefined)
   }
 
-  private def parameterListWithoutVarArgs[_: P]: P[ParameterList] = P(`...`).map { _ => ParameterList(Nil, false) }
+  private def varArgsParameterList[_: P]: P[ParameterList] = P(`...`).map { _ => ParameterList(Nil, false) }
 
-  private def parameterList[_: P]: P[ParameterList] = parameterListWithoutVarArgs | parameterListWithVarArgs
+  private def parameterList[_: P]: P[ParameterList] = varArgsParameterList | parameterListWithVarArgs
 
   private def argumentList[_: P]: P[List[Expression]] =
     P((`(` ~ expressionList.? ~ `)`).map { l => l.getOrElse(Nil) } |
@@ -295,13 +295,13 @@ object LuaParser extends LuaLexer {
   }
 
   def main(args: Array[String]): Unit = {
-   //parseFolder(new File("C:\\server\\garrysmod\\gamemodes"))
+    //parseFolder(new File("C:\\server\\garrysmod\\gamemodes"))
     val input = new String(Files.readAllBytes(new File("test.lua").toPath)).trim
     val start = System.currentTimeMillis()
     parse(input, chunk(_)) match {
       case Parsed.Success(value, _) => println("SUCCESS: ", value)
         val compacted = new Compactor().compactBlock(value)
-        println(new GlobalVariableVisitor().visitBlock(value, ()))
+        println(new Printer().printBlock(compacted))
       case Parsed.Failure(label, _, extra) => println("FAILURE", label, extra)
     }
     println(System.currentTimeMillis() - start)
