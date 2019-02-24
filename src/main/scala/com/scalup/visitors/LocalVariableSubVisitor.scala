@@ -115,7 +115,8 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean) extends TreeBuildVi
 				FunctionDefinition(
 					if(local)
 						FunctionName(name.name.splitAt(1) match { case (head, rest) => passthrough.subVarName(head.head) +: rest }, name.withSelf)
-					else name,
+					else
+						FunctionName(name.name.splitAt(1) match { case (head, rest) => passthrough.getSubNameOrOrig(head.head) +: rest }, name.withSelf),
 					FunctionBody(
 						body.parameters.copy(parameters = body.parameters.parameters.map(p => Parameter(passthrough.subVarName(p.name)))),
 						visitBlock(body.body, passthrough)
