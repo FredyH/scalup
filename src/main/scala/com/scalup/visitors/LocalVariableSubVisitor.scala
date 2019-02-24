@@ -18,9 +18,17 @@ object LocalVariableSubVisitor {
 		}
 
 		def subVarName(originalName: String): String = {
-			val newName = variableNames.next()
-			nameSubs(originalName) = newName
-			newName
+			if(originalName == "self")
+				"self"
+			else {
+				if(nameSubs.contains(originalName)) {
+					nameSubs(originalName)
+				} else {
+					val newName = variableNames.next()
+					nameSubs(originalName) = newName
+					newName
+				}
+			}
 		}
 
 		// Returns the variables substituted name or the originally passed name if there is no existing substitution

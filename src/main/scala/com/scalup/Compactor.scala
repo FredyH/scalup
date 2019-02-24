@@ -12,7 +12,7 @@ object Compactor {
   )
 
   val reservedNames =
-    Set("if", "while", "do", "end", "repeat", "until", "client", "server", "require", "util", "math", "debug", "G")
+    Set("if", "while", "do", "end", "repeat", "until", "client", "server", "require", "util", "math", "debug", "G", "util", "math", "MsgN", "print", "break")
 
   val variableCharPool = ('a' to 'z') ++ ('A' to 'Z')
 
