@@ -38,13 +38,20 @@ object LocalVariableSubVisitor {
 	}
 }
 
-class LocalVariableSubVisitor extends TreeBuildVisitor[LocalVarSubData] {
+class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean) extends TreeBuildVisitor[LocalVarSubData] {
+
+	val (luaTrueVal, luaFalseVal): (Expression, Expression) = {
+		if(subTrueFalseLiterals) {
+			(UnaryNot(UnaryNot(LuaNumber(1, "1"))), UnaryNot(LuaNumber(1, "1")))
+		} else
+			(LuaTrue, LuaFalse)
+	}
 
 	override def visitVariable(variable: Variable, passthrough: LocalVarSubData, global: Boolean = false): Variable =
 		if(!global) {
 			variable match {
-				case NamedVariable(name) => NamedVariable(passthrough.subVarName(name))
-				case PrefixedVariable(prefix, name) => PrefixedVariable(visitPrefixExpression(prefix, passthrough), passthrough.subVarName(name))
+				case NamedVariable(name) => NamedVariable(passthrough.getSubNameOrOrig(name))
+				case PrefixedVariable(prefix, name) => PrefixedVariable(visitPrefixExpression(prefix, passthrough), name)
 				case IndexedVariable(prefix, expression) =>
 					IndexedVariable(visitPrefixExpression(prefix, passthrough), visitExpression(expression, passthrough))
 			}
@@ -73,6 +80,9 @@ class LocalVariableSubVisitor extends TreeBuildVisitor[LocalVarSubData] {
 					)
 				)
 
+			case LuaFalse => luaFalseVal
+			case LuaTrue => luaTrueVal
+
 			case _ => super.visitExpression(expression, passthrough)
 		}
 	}
@@ -82,7 +92,8 @@ class LocalVariableSubVisitor extends TreeBuildVisitor[LocalVarSubData] {
 		statement match {
 
 			case LocalDeclaration(names, expressionList) =>
-				LocalDeclaration(names.map(passthrough.subVarName), expressionList.map(visitExpression(_, passthrough)))
+				val passthroughCopy = passthrough.clone
+				LocalDeclaration(names.map(passthrough.subVarName), expressionList.map(visitExpression(_, passthroughCopy)))
 
 			case ForLoop(variableName, initialValue, upperBound, stepValue, block) =>
 				ForLoop(
@@ -102,7 +113,9 @@ class LocalVariableSubVisitor extends TreeBuildVisitor[LocalVarSubData] {
 
 			case FunctionDefinition(name, body, local) =>
 				FunctionDefinition(
-					if(local) FunctionName(name.name.map(passthrough.subVarName), name.withSelf) else name,
+					if(local)
+						FunctionName(name.name.splitAt(1) match { case (head, rest) => passthrough.subVarName(head.head) +: rest }, name.withSelf)
+					else name,
 					FunctionBody(
 						body.parameters.copy(parameters = body.parameters.parameters.map(p => Parameter(passthrough.subVarName(p.name)))),
 						visitBlock(body.body, passthrough)

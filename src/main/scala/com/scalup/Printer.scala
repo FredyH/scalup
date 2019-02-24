@@ -11,16 +11,20 @@ object Printer {
 		indentString: String = "\t",
 		listSeparator: String = ", ",
 		padding: String = " ",
+    conditionalOpener: String = " ",
+    conditionalCloser: String = " ",
 		wrapConditions: Boolean = true
 	)
 
 	val MinifyPrinterConfig = PrinterConfig(
 		statementSeparator = ";",
-		blockOpener = " ",
+		blockOpener = ";",
 		blockCloser = ";",
 		indentString = "",
 		listSeparator = ",",
 		padding = "",
+    conditionalOpener = "(",
+    conditionalCloser = ")",
 		wrapConditions = false
 	)
 
@@ -128,15 +132,16 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
         indent("do") + printBlock(body, indentIndex + 1) + indent("end")
 
       case WhileLoop(condition, body) =>
-        indent("while" + printExpression(condition, indentIndex) + "do") + printBlock(body, indentIndex + 1) + indent("end")
+        indent("while" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "do") +
+          printBlock(body, indentIndex + 1) + indent("end")
 
       case RepeatLoop(body, condition) =>
-        indent("repeat") + printBlock(body, indentIndex + 1) + indent("until") + printExpression(condition, indentIndex)
+        indent("repeat") + printBlock(body, indentIndex + 1) + indent("until") + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser
 
       case IfStatement(condition, body, elseIfs, elseBlock) =>
-        val ifHeader = indent("if" + config.padding + printExpression(condition, indentIndex) + config.padding + "then")
+        val ifHeader = indent("if" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "then")
         val elseIfStrs = elseIfs.map{ elseIf =>
-          val elseIfHeader = indent("elseif" + config.padding + printExpression(condition, indentIndex) + config.padding + "then")
+          val elseIfHeader = indent("elseif" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "then")
           elseIfHeader + printBlock(body, indentIndex + 1)
         }.mkString(config.statementSeparator)
         val elseStr = elseBlock.map { elseBlock =>
@@ -152,7 +157,7 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
         indent(header) + printBlock(block, indentIndex + 1) + indent("end")
 
       case ForEachLoop(variables, expressions, block) =>
-        val header = indent(s"for ${variables.mkString(config.listSeparator)} in ${expressions.map(e => printExpression(e, indentIndex)).mkString(config.listSeparator)} do")
+        val header = indent(s"for${config.conditionalOpener}${variables.mkString(config.listSeparator)} in ${expressions.map(e => printExpression(e, indentIndex)).mkString(config.listSeparator)}${config.conditionalCloser}do")
         s"$header${printBlock(block, indentIndex + 1)}${indent("end")}"
 
       case FunctionDefinition(name, body, local) =>

@@ -8,7 +8,7 @@ import scala.collection.mutable
 
 object Compactor {
   case class CompactorConfig(
-    replaceLocalVars: Boolean = true
+    shortenTrueFalseLiterals: Boolean = true // Shortens true to !!1 and false to !1
   )
 
   val reservedNames =
@@ -53,7 +53,7 @@ class Compactor(config: CompactorConfig = CompactorConfig()) {
         .map(intToVarName)
         .filter(n => !Compactor.reservedNames.contains(n) && !globalVariables.contains(n))
 
-    val localVariableSubVisitor = new LocalVariableSubVisitor
+    val localVariableSubVisitor = new LocalVariableSubVisitor(config.shortenTrueFalseLiterals)
     localVariableSubVisitor.visitBlock(block, LocalVarSubData(localVariableReplacementNames, mutable.Map()))
   }
 
