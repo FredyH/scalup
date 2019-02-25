@@ -123,7 +123,9 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
           case BreakStatement => "break"
           case ReturnStatement(expressions) => expressions.map(e => printExpression(e, indentIndex: Int))
             .mkString(indent("return "), config.listSeparator, "")
+          case GotoStatement(name) => s"goto $name"
         }
+      case LabelDeclaration(name) => s"::$name::"
 
       case call: FunctionCall =>
         indent(printFunctionCall(call))

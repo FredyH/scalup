@@ -18,6 +18,7 @@ object LuaToken extends Enum[LuaToken] {
 
   case class IDENTIFIER(name: String) extends LuaToken
   case class STRING(content: String, raw: String) extends LuaToken
+  case class LABEL(value: String) extends LuaToken
   case class NUMBER(value: Double, raw: String) extends LuaToken
   case object MODULUS extends KeywordOrOperator("%")
   case object LESS_THAN extends KeywordOrOperator("<")

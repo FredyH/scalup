@@ -48,7 +48,7 @@ class GlobalVariableVisitor extends ReducerVisitor[Unit, Set[String]]((a, b) => 
           case ReturnStatement(exprs) =>
             val newVars = exprs.flatMap(expr => visitExpression(expr, passthrough))
             (localVars, globalVars ++ (newVars.toSet -- localVars))
-          case ContinueStatement | BreakStatement =>
+          case ContinueStatement | BreakStatement | GotoStatement(_) | LabelDeclaration(_) =>
             (localVars, globalVars)
           case call: FunctionCall =>
             (localVars, globalVars ++ (visitFunctionCall(call, passthrough) -- localVars))

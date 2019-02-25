@@ -64,6 +64,8 @@ case object ContinueStatement extends LastStatement
 
 case object BreakStatement extends LastStatement
 
+case class GotoStatement(label: String) extends LastStatement
+
 case class ReturnStatement(expressions: List[Expression]) extends LastStatement
 
 sealed trait Expression extends LuaAST {
@@ -95,6 +97,8 @@ case class IfStatement(condition: Expression, body: Block, elseIfs: List[ElseIfS
 case class ForLoop(variableName: String, initialValue: Expression, upperBound: Expression, stepValue: Option[Expression], block: Block) extends Statement
 
 case class ForEachLoop(variables: List[String], expressions: List[Expression], block: Block) extends Statement
+
+case class LabelDeclaration(name: String) extends Statement
 
 case class Parameter(name: String) extends LuaAST {
   override def toString: String = name

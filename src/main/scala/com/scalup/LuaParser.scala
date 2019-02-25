@@ -29,8 +29,9 @@ object LuaParser extends LuaLexer {
 
   private def statement[_: P]: P[Statement] =
     P(functionCall | forLoop | globalDeclaration | doBlock | whileLoop | repeatLoop | ifStatement |
-      forEachLoop | functionDefinition | localFunctionDefinition | localDeclaration)
+      forEachLoop | functionDefinition | localFunctionDefinition | localDeclaration | labelDeclaration)
 
+  def labelDeclaration[_: P]: P[LabelDeclaration] = label.map(l => LabelDeclaration(l.value))
 
   private def block[_: P]: P[Block] =
     P((statement ~ `;`.?).rep ~ (lastStatement ~ `;`.?).?).map {
@@ -48,7 +49,9 @@ object LuaParser extends LuaLexer {
     list => ReturnStatement(list.getOrElse(Nil))
   }
 
-  private def lastStatement[_: P]: P[LastStatement] = breakStatement | continueStatement | returnStatement
+  private def lastStatement[_: P]: P[LastStatement] = breakStatement | continueStatement | returnStatement | gotoStatement
+
+  def gotoStatement[_: P]: P[GotoStatement] = P(`goto` ~ identifier).map(label => GotoStatement(label.name))
 
   private def expression[_: P]: P[Expression] = orOperators
 
@@ -281,7 +284,7 @@ object LuaParser extends LuaLexer {
       val input = new String(Files.readAllBytes(path))
       parse(input, chunk(_)) match {
         case Parsed.Success(value, _) => //println("Successfully parsed file: " + f.getName)
-        case Parsed.Failure(label, _, extra) => println(s"Failed to parse file: ${f.getName}")
+        case Parsed.Failure(label, _, extra) => println(s"Failed to parse file: ${f.getAbsolutePath}, $label")
       }
     }
     println(System.currentTimeMillis() - start)
@@ -295,13 +298,12 @@ object LuaParser extends LuaLexer {
   }
 
   def main(args: Array[String]): Unit = {
-    //parseFolder(new File("C:\\server\\garrysmod\\gamemodes"))
     val input = new String(Files.readAllBytes(new File("test.lua").toPath)).trim
     val start = System.currentTimeMillis()
     parse(input, chunk(_)) match {
       case Parsed.Success(value, _) => println("SUCCESS: ", value)
         val compacted = new Compactor().compactBlock(value)
-        println(new Printer().printBlock(compacted))
+        println(new Printer(Printer.MinifyPrinterConfig).printBlock(compacted))
       case Parsed.Failure(label, _, extra) => println("FAILURE", label, extra)
     }
     println(System.currentTimeMillis() - start)

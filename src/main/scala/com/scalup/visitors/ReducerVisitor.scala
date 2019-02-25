@@ -3,7 +3,7 @@ package com.scalup.visitors
 import com.scalup._
 
 
-class ReducerVisitor[P, R](returnTypeReducer: (R, R) => R, emptyReturnValue: R) extends AbstractVisitor [P, R] {
+class ReducerVisitor[P, R](returnTypeReducer: (R, R) => R, emptyReturnValue: R) extends AbstractVisitor[P, R] {
 
   def visitField(field: Field, passthrough: P): R = {
     field match {
@@ -18,7 +18,7 @@ class ReducerVisitor[P, R](returnTypeReducer: (R, R) => R, emptyReturnValue: R) 
       case NamedVariable(name) => emptyReturnValue
       case PrefixedVariable(prefix, name) => visitPrefixExpression(prefix, passthrough)
       case IndexedVariable(prefix, expression) =>
-				returnTypeReducer(visitPrefixExpression(prefix, passthrough), visitExpression(expression, passthrough))
+        returnTypeReducer(visitPrefixExpression(prefix, passthrough), visitExpression(expression, passthrough))
     }
 
   def visitFunctionCall(call: FunctionCall, passthrough: P): R =
@@ -27,7 +27,7 @@ class ReducerVisitor[P, R](returnTypeReducer: (R, R) => R, emptyReturnValue: R) 
         returnTypeReducer(arguments.map(e => visitExpression(e, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer), visitExpression(prefix, passthrough))
 
       case FunctionCallWithSelf(prefix, name, arguments) =>
-				returnTypeReducer(arguments.map(e => visitExpression(e, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer), visitExpression(prefix, passthrough))
+        returnTypeReducer(arguments.map(e => visitExpression(e, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer), visitExpression(prefix, passthrough))
     }
 
   def visitPrefixExpression(prefixExpression: PrefixExpression, passthrough: P): R =
@@ -40,7 +40,7 @@ class ReducerVisitor[P, R](returnTypeReducer: (R, R) => R, emptyReturnValue: R) 
   def visitExpression(expression: Expression, passthrough: P): R = {
     expression match {
       case operator: BinaryOperator =>
-				returnTypeReducer(visitExpression(operator.left, passthrough), visitExpression(operator.right, passthrough))
+        returnTypeReducer(visitExpression(operator.left, passthrough), visitExpression(operator.right, passthrough))
 
       case operator: UnaryOperator => visitExpression(operator.subExpression, passthrough)
 
@@ -62,20 +62,22 @@ class ReducerVisitor[P, R](returnTypeReducer: (R, R) => R, emptyReturnValue: R) 
 
     statement match {
       case GlobalDeclaration(variables, expressionList) =>
-				returnTypeReducer (
-        	variables.map(visitVariable(_, passthrough, true)).foldLeft(emptyReturnValue)(returnTypeReducer),
-					expressionList.map(e => visitExpression(e, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer)
-				)
+        returnTypeReducer(
+          variables.map(visitVariable(_, passthrough, true)).foldLeft(emptyReturnValue)(returnTypeReducer),
+          expressionList.map(e => visitExpression(e, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer)
+        )
 
       case LocalDeclaration(names, expressionList) =>
-				expressionList.map(visitExpression(_, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer)
+        expressionList.map(visitExpression(_, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer)
 
       case lastStatement: LastStatement =>
         lastStatement match {
           case ContinueStatement => emptyReturnValue
           case BreakStatement => emptyReturnValue
           case ReturnStatement(expressions) => expressions.map(e => visitExpression(e, passthrough)).foldLeft(emptyReturnValue)(returnTypeReducer)
+          case GotoStatement(name) => emptyReturnValue
         }
+      case LabelDeclaration(name) => emptyReturnValue
 
       case call: FunctionCall => visitFunctionCall(call, passthrough)
 
@@ -88,28 +90,28 @@ class ReducerVisitor[P, R](returnTypeReducer: (R, R) => R, emptyReturnValue: R) 
         returnTypeReducer(visitBlock(body, passthrough), visitExpression(condition, passthrough))
 
       case IfStatement(condition, body, elseIfs, elseBlock) =>
-				List(
-					visitExpression(condition, passthrough),
-					elseIfs.map(elseIf =>
-						returnTypeReducer(visitExpression(elseIf.condition, passthrough), visitBlock(elseIf.body, passthrough))
-					).reduceOption(returnTypeReducer).getOrElse(emptyReturnValue),
-					elseBlock.map(visitBlock(_, passthrough)).getOrElse(emptyReturnValue),
-					visitBlock(body, passthrough)
-				).foldLeft(emptyReturnValue)(returnTypeReducer)
+        List(
+          visitExpression(condition, passthrough),
+          elseIfs.map(elseIf =>
+            returnTypeReducer(visitExpression(elseIf.condition, passthrough), visitBlock(elseIf.body, passthrough))
+          ).reduceOption(returnTypeReducer).getOrElse(emptyReturnValue),
+          elseBlock.map(visitBlock(_, passthrough)).getOrElse(emptyReturnValue),
+          visitBlock(body, passthrough)
+        ).foldLeft(emptyReturnValue)(returnTypeReducer)
 
       case ForLoop(variableName, initialValue, upperBound, stepValue, block) =>
-				List(
-					visitExpression(initialValue, passthrough),
-					visitExpression(upperBound, passthrough),
-					stepValue.map(visitExpression(_, passthrough)).getOrElse(emptyReturnValue),
-					visitBlock(block, passthrough)
-				).foldLeft(emptyReturnValue)(returnTypeReducer)
+        List(
+          visitExpression(initialValue, passthrough),
+          visitExpression(upperBound, passthrough),
+          stepValue.map(visitExpression(_, passthrough)).getOrElse(emptyReturnValue),
+          visitBlock(block, passthrough)
+        ).foldLeft(emptyReturnValue)(returnTypeReducer)
 
       case ForEachLoop(variables, expressions, block) =>
-				returnTypeReducer(
-					expressions.map(visitExpression(_, passthrough)).reduceOption(returnTypeReducer).getOrElse(emptyReturnValue),
-					visitBlock(block, passthrough)
-				)
+        returnTypeReducer(
+          expressions.map(visitExpression(_, passthrough)).reduceOption(returnTypeReducer).getOrElse(emptyReturnValue),
+          visitBlock(block, passthrough)
+        )
 
       case FunctionDefinition(name, body, local) =>
         visitBlock(body.body, passthrough)
