@@ -10,11 +10,11 @@ sealed trait LuaToken extends EnumEntry
 
 object LuaToken extends Enum[LuaToken] {
   sealed class KeywordOrOperator(val keywords: String*) extends LuaToken {
-    private[scalup] def regex: Regex = keywords.map(s => "(" + Pattern.quote(s) + ")").mkString("|").r
+    private[scalup] def regex: Regex =
+      keywords.map(s => "(" + Pattern.quote(s) + ")").mkString("|").r
 
     override def toString: String = keywords.head
   }
-
 
   case class IDENTIFIER(name: String) extends LuaToken
   case class STRING(content: String, raw: String) extends LuaToken
@@ -71,8 +71,11 @@ object LuaToken extends Enum[LuaToken] {
 
   override def values: immutable.IndexedSeq[LuaToken] = findValues
 
-  def keyWordMap: Map[String, KeywordOrOperator] = values.collect { case e : KeywordOrOperator => e }
-    .flatMap(token => token.keywords.map(keyword => keyword -> token)).toMap
+  def keyWordMap: Map[String, KeywordOrOperator] =
+    values
+      .collect { case e: KeywordOrOperator => e }
+      .flatMap(token => token.keywords.map(keyword => keyword -> token))
+      .toMap
 
   //This needs to be in order of descending length to try and match longest keywords first
   def keyWords: List[String] = keyWordMap.keys.toList.sortBy(_.length).reverse

@@ -5,12 +5,11 @@ import org.apache.commons.text.StringEscapeUtils
 import fastparse._
 import NoWhitespace._
 
-
 trait LuaLexer {
   def identifier[_: P]: P[IDENTIFIER] =
-    P(CharIn("A-Za-z_") ~ CharIn("A-Za-z_0-9").rep).!
-      .filter(n => !keyWords.contains(n))
-      .map(IDENTIFIER)
+    P(CharIn("A-Za-z_") ~ CharIn("A-Za-z_0-9").rep).!.filter(
+      n => !keyWords.contains(n)
+    ).map(IDENTIFIER)
 
   def number[_: P]: P[NUMBER] = {
     def digits(min: Int = 0) = P(CharIn("0-9").rep(min))
@@ -23,11 +22,18 @@ trait LuaLexer {
 
     def exponentialPart = P(CharIn("eE") ~ CharIn("\\-+").? ~ digits(1))
 
-    def hexNumber = P(StringIn("0x") ~ hexDigits(1)).!.map(str => NUMBER(Integer.parseInt(str.substring(2), 16).toDouble, str))
+    def hexNumber =
+      P(StringIn("0x") ~ hexDigits(1)).!.map(
+        str => NUMBER(Integer.parseInt(str.substring(2), 16).toDouble, str)
+      )
 
-    def floatWithoutLeading = P(plusOrMinus.? ~ decimalPlaces.?).!.filter(_.nonEmpty).map(str => NUMBER(str.toDouble, str))
+    def floatWithoutLeading =
+      P(plusOrMinus.? ~ decimalPlaces.?).!.filter(_.nonEmpty)
+        .map(str => NUMBER(str.toDouble, str))
 
-    def float = P(plusOrMinus.? ~ digits(1) ~ decimalPlaces.?).!.filter(_.nonEmpty).map(str => NUMBER(str.toDouble, str))
+    def float =
+      P(plusOrMinus.? ~ digits(1) ~ decimalPlaces.?).!.filter(_.nonEmpty)
+        .map(str => NUMBER(str.toDouble, str))
 
     P(hexNumber | floatWithoutLeading | float)
   }
@@ -55,13 +61,17 @@ trait LuaLexer {
 
   def `==`[_: P]: P[KeywordOrOperator] = P("==").map(_ => EQUALS)
 
-  def `!=`[_: P]: P[KeywordOrOperator] = P(StringIn("!=", "~=")).map(_ => NOT_EQUALS)
+  def `!=`[_: P]: P[KeywordOrOperator] =
+    P(StringIn("!=", "~=")).map(_ => NOT_EQUALS)
 
-  def `||`[_: P]: P[KeywordOrOperator] = P("||" | keywordMatch("or")).map(_ => LOGICAL_OR)
+  def `||`[_: P]: P[KeywordOrOperator] =
+    P("||" | keywordMatch("or")).map(_ => LOGICAL_OR)
 
-  def `&&`[_: P]: P[KeywordOrOperator] = P("&&" | keywordMatch("and")).map(_ => LOGICAL_AND)
+  def `&&`[_: P]: P[KeywordOrOperator] =
+    P("&&" | keywordMatch("and")).map(_ => LOGICAL_AND)
 
-  def `!`[_: P]: P[KeywordOrOperator] = P("!" | keywordMatch("not")).map(_ => LOGICAL_NOT)
+  def `!`[_: P]: P[KeywordOrOperator] =
+    P("!" | keywordMatch("not")).map(_ => LOGICAL_NOT)
 
   def `repeat`[_: P]: P[Unit] = P("repeat")
 
@@ -139,10 +149,13 @@ trait LuaLexer {
 
   def `)`[_: P]: P[Unit] = P(")")
 
-
   def parseQuotedString[_: P](quoteChar: Char): P[STRING] = {
     val quoteStr = quoteChar.toString
-    P(quoteStr ~ ("\\\\" | ("\\" ~ quoteStr)  | CharPred(c => c != quoteChar && c != '\n' && c != '\r')).rep ~ quoteStr).!.map { raw =>
+    P(
+      quoteStr ~ ("\\\\" | ("\\" ~ quoteStr) | CharPred(
+        c => c != quoteChar && c != '\n' && c != '\r'
+      )).rep ~ quoteStr
+    ).!.map { raw =>
       val content = StringEscapeUtils.unescapeJava(raw.slice(1, raw.length - 1))
       STRING(content, raw)
     }
@@ -154,21 +167,22 @@ trait LuaLexer {
   def singleQuotedString[_: P]: P[STRING] =
     parseQuotedString('\'')
 
-  def multilineStringStart[_: P]: P[Int] = P("[" ~ "=".rep.! ~ "[").map(str => str.length)
+  def multilineStringStart[_: P]: P[Int] =
+    P("[" ~ "=".rep.! ~ "[").map(str => str.length)
 
   def multilineStringEnd[_: P](num: Int): P[Unit] = P("]" ~ "=".*(num) ~ "]")
 
   def multilineString[_: P]: P[STRING] =
-    multilineStringStart.flatMap{ num =>
-      P((!multilineStringEnd(num) ~ AnyChar).rep.! ~ multilineStringEnd(num)).map{ str =>
-        val prefix = "[" + "=".*(num) + "["
-        val postfix = "]" + "=".*(num) + "]"
-        STRING(str, prefix + str + postfix)
-      }
+    multilineStringStart.flatMap { num =>
+      P((!multilineStringEnd(num) ~ AnyChar).rep.! ~ multilineStringEnd(num))
+        .map { str =>
+          val prefix = "[" + "=".*(num) + "["
+          val postfix = "]" + "=".*(num) + "]"
+          STRING(str, prefix + str + postfix)
+        }
     }
 
   def string[_: P]: P[STRING] =
     P(singleQuotedString | doubleQuotedString | multilineString)
-
 
 }

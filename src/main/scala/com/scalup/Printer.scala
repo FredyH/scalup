@@ -4,35 +4,33 @@ import com.scalup.Printer.PrinterConfig
 
 object Printer {
 
-  case class PrinterConfig(
-		statementSeparator: String = "\n",
-		blockOpener: String = "\n",
-		blockCloser: String = "\n",
-		indentString: String = "\t",
-		listSeparator: String = ", ",
-		padding: String = " ",
-    conditionalOpener: String = " ",
-    conditionalCloser: String = " ",
-		wrapConditions: Boolean = true
-	)
+  case class PrinterConfig(statementSeparator: String = "\n",
+                           blockOpener: String = "\n",
+                           blockCloser: String = "\n",
+                           indentString: String = "\t",
+                           listSeparator: String = ", ",
+                           padding: String = " ",
+                           conditionalOpener: String = " ",
+                           conditionalCloser: String = " ",
+                           wrapConditions: Boolean = true)
 
-	val MinifyPrinterConfig = PrinterConfig(
-		statementSeparator = ";",
-		blockOpener = ";",
-		blockCloser = ";",
-		indentString = "",
-		listSeparator = ",",
-		padding = "",
+  val MinifyPrinterConfig = PrinterConfig(
+    statementSeparator = ";",
+    blockOpener = ";",
+    blockCloser = ";",
+    indentString = "",
+    listSeparator = ",",
+    padding = "",
     conditionalOpener = "(",
     conditionalCloser = ")",
-		wrapConditions = false
-	)
+    wrapConditions = false
+  )
 
 }
 
-
 class Printer(config: PrinterConfig = PrinterConfig()) {
-  private def wrapIfHigherPrecedence(expression: Expression, precedence: Int): String = {
+  private def wrapIfHigherPrecedence(expression: Expression,
+                                     precedence: Int): String = {
     if (expression.precedence < precedence)
       s"(${printExpression(expression)})"
     else
@@ -42,31 +40,47 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
   private def printField(field: Field): String = {
     field match {
       case FieldWithoutIndex(value) => printExpression(value)
-      case FieldByIndex(key, value) => "[" + printExpression(key) + "]" + wrapInPadding("=") + printExpression(value)
-      case FieldByName(key, value) => key + wrapInPadding("=") + printExpression(value)
+      case FieldByIndex(key, value) =>
+        "[" + printExpression(key) + "]" + wrapInPadding("=") + printExpression(
+          value
+        )
+      case FieldByName(key, value) =>
+        key + wrapInPadding("=") + printExpression(value)
     }
   }
 
   private def printVariable(variable: Variable): String =
     variable match {
       case NamedVariable(name) => name
-      case PrefixedVariable(prefix, name) => printExpression(prefix) + "." + name
-      case IndexedVariable(prefix, expression) => printExpression(prefix) + "[" + printExpression(expression) + "]"
+      case PrefixedVariable(prefix, name) =>
+        printExpression(prefix) + "." + name
+      case IndexedVariable(prefix, expression) =>
+        printExpression(prefix) + "[" + printExpression(expression) + "]"
     }
 
   private def printFunctionCall(call: FunctionCall): String =
     call match {
       case FunctionCallWithoutSelf(prefix, arguments) =>
-        arguments.map(e => printExpression(e)).mkString(printExpression(prefix) + "(", config.listSeparator, ")")
+        arguments
+          .map(e => printExpression(e))
+          .mkString(printExpression(prefix) + "(", config.listSeparator, ")")
 
       case FunctionCallWithSelf(prefix, name, arguments) =>
-        arguments.map(e => printExpression(e)).mkString(s"${printExpression(prefix)}:$name(", config.listSeparator, ")")
+        arguments
+          .map(e => printExpression(e))
+          .mkString(
+            s"${printExpression(prefix)}:$name(",
+            config.listSeparator,
+            ")"
+          )
     }
 
-  private def printPrefixExpression(prefixExpression: PrefixExpression): String =
+  private def printPrefixExpression(
+    prefixExpression: PrefixExpression
+  ): String =
     prefixExpression match {
-      case call: FunctionCall => printFunctionCall(call)
-      case variable: Variable => printVariable(variable)
+      case call: FunctionCall       => printFunctionCall(call)
+      case variable: Variable       => printVariable(variable)
       case ExpressionAsPrefix(expr) => "(" + printExpression(expr) + ")"
     }
 
@@ -74,7 +88,8 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
     config.padding + str + config.padding
   }
 
-  private def printExpression(expression: Expression, indentIndex: Int = 0): String = {
+  private def printExpression(expression: Expression,
+                              indentIndex: Int = 0): String = {
     expression match {
       case operator: BinaryOperator =>
         wrapIfHigherPrecedence(operator.left, operator.precedence) +
@@ -82,22 +97,29 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
           wrapIfHigherPrecedence(operator.right, operator.precedence)
 
       case operator: UnaryOperator =>
-        operator.token + wrapIfHigherPrecedence(operator.subExpression, operator.precedence)
+        operator.token + wrapIfHigherPrecedence(
+          operator.subExpression,
+          operator.precedence
+        )
 
       case FunctionExpression(functionBody) =>
-        functionBody.parameters.paramsWithVarArg.mkString("function(", config.listSeparator, ")") +
-          printBlock(functionBody.body, indentIndex + 1) + indentString(indentIndex)("end")
+        functionBody.parameters.paramsWithVarArg
+          .mkString("function(", config.listSeparator, ")") +
+          printBlock(functionBody.body, indentIndex + 1) + indentString(
+          indentIndex
+        )("end")
 
       case expression: PrefixExpression =>
         printPrefixExpression(expression)
 
-      case LuaNil => "nil"
-      case LuaFalse => "false"
-      case LuaTrue => "true"
+      case LuaNil                => "nil"
+      case LuaFalse              => "false"
+      case LuaTrue               => "true"
       case LuaNumber(value, raw) => raw
       case LuaString(value, raw) => raw
-      case VarArgs => "..."
-      case TableConstructor(fields) => fields.map(printField).mkString("{", config.listSeparator, "}")
+      case VarArgs               => "..."
+      case TableConstructor(fields) =>
+        fields.map(printField).mkString("{", config.listSeparator, "}")
     }
   }
 
@@ -105,24 +127,37 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
     (config.indentString * indentIndex) + str
   }
 
-
   private def printStatement(statement: Statement, indentIndex: Int): String = {
     val indent = indentString(indentIndex) _
     statement match {
       case GlobalDeclaration(variables, expressionList) =>
-        indent(variables.map(printVariable).mkString(", ") + wrapInPadding("=") + expressionList.map(e => printExpression(e, indentIndex: Int))
-          .mkString(config.listSeparator))
+        indent(
+          variables
+            .map(printVariable)
+            .mkString(", ") + wrapInPadding("=") + expressionList
+            .map(e => printExpression(e, indentIndex: Int))
+            .mkString(config.listSeparator)
+        )
 
       case LocalDeclaration(names, expressionList) =>
-        indent(names.mkString("local ", config.listSeparator, wrapInPadding("=") + expressionList.map(e => printExpression(e, indentIndex: Int))
-          .mkString(config.listSeparator)))
+        indent(
+          names.mkString(
+            "local ",
+            config.listSeparator,
+            wrapInPadding("=") + expressionList
+              .map(e => printExpression(e, indentIndex: Int))
+              .mkString(config.listSeparator)
+          )
+        )
 
       case lastStatement: LastStatement =>
         lastStatement match {
           case ContinueStatement => "continue"
-          case BreakStatement => "break"
-          case ReturnStatement(expressions) => expressions.map(e => printExpression(e, indentIndex: Int))
-            .mkString(indent("return "), config.listSeparator, "")
+          case BreakStatement    => "break"
+          case ReturnStatement(expressions) =>
+            expressions
+              .map(e => printExpression(e, indentIndex: Int))
+              .mkString(indent("return "), config.listSeparator, "")
           case GotoStatement(name) => s"goto $name"
         }
       case LabelDeclaration(name) => s"::$name::"
@@ -134,44 +169,80 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
         indent("do") + printBlock(body, indentIndex + 1) + indent("end")
 
       case WhileLoop(condition, body) =>
-        indent("while" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "do") +
+        indent(
+          "while" + config.conditionalOpener + printExpression(
+            condition,
+            indentIndex
+          ) + config.conditionalCloser + "do"
+        ) +
           printBlock(body, indentIndex + 1) + indent("end")
 
       case RepeatLoop(body, condition) =>
-        indent("repeat") + printBlock(body, indentIndex + 1) + indent("until") + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser
+        indent("repeat") + printBlock(body, indentIndex + 1) + indent("until") + config.conditionalOpener + printExpression(
+          condition,
+          indentIndex
+        ) + config.conditionalCloser
 
       case IfStatement(condition, body, elseIfs, elseBlock) =>
-        val ifHeader = indent("if" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "then")
-        val elseIfStrs = elseIfs.map{ elseIf =>
-          val elseIfHeader = indent("elseif" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "then")
-          elseIfHeader + printBlock(body, indentIndex + 1)
-        }.mkString(config.statementSeparator)
-        val elseStr = elseBlock.map { elseBlock =>
-          indent("else") + printBlock(elseBlock, indentIndex + 1)
-        }.getOrElse("")
-        ifHeader + printBlock(body, indentIndex + 1) + elseIfStrs + elseStr + indent("end")
+        val ifHeader = indent(
+          "if" + config.conditionalOpener + printExpression(
+            condition,
+            indentIndex
+          ) + config.conditionalCloser + "then"
+        )
+        val elseIfStrs = elseIfs
+          .map { elseIf =>
+            val elseIfHeader = indent(
+              "elseif" + config.conditionalOpener + printExpression(
+                condition,
+                indentIndex
+              ) + config.conditionalCloser + "then"
+            )
+            elseIfHeader + printBlock(body, indentIndex + 1)
+          }
+          .mkString(config.statementSeparator)
+        val elseStr = elseBlock
+          .map { elseBlock =>
+            indent("else") + printBlock(elseBlock, indentIndex + 1)
+          }
+          .getOrElse("")
+        ifHeader + printBlock(body, indentIndex + 1) + elseIfStrs + elseStr + indent(
+          "end"
+        )
 
       case ForLoop(variableName, initialValue, upperBound, stepValue, block) =>
         val initialStr = printExpression(initialValue, indentIndex)
         val upperStr = printExpression(upperBound, indentIndex)
-        val stepStr = stepValue.map(e => config.listSeparator + printExpression(e, indentIndex)).getOrElse("")
-        val header = s"for $variableName${wrapInPadding("=")}$initialStr${config.listSeparator}$upperStr$stepStr do"
+        val stepStr = stepValue
+          .map(e => config.listSeparator + printExpression(e, indentIndex))
+          .getOrElse("")
+        val header =
+          s"for $variableName${wrapInPadding("=")}$initialStr${config.listSeparator}$upperStr$stepStr do"
         indent(header) + printBlock(block, indentIndex + 1) + indent("end")
 
       case ForEachLoop(variables, expressions, block) =>
-        val header = indent(s"for${config.conditionalOpener}${variables.mkString(config.listSeparator)} in ${expressions.map(e => printExpression(e, indentIndex)).mkString(config.listSeparator)}${config.conditionalCloser}do")
+        val header = indent(
+          s"for${config.conditionalOpener}${variables.mkString(config.listSeparator)} in ${expressions
+            .map(e => printExpression(e, indentIndex))
+            .mkString(config.listSeparator)}${config.conditionalCloser}do"
+        )
         s"$header${printBlock(block, indentIndex + 1)}${indent("end")}"
 
       case FunctionDefinition(name, body, local) =>
         val prefix = if (local) "local function" else "function"
-        val header = indent(s"$prefix $name(${body.parameters.paramsWithVarArg.mkString(config.listSeparator)})")
+        val header = indent(
+          s"$prefix $name(${body.parameters.paramsWithVarArg.mkString(config.listSeparator)})"
+        )
         val bodyStr = printBlock(body.body, indentIndex + 1)
         header + bodyStr + indent("end")
     }
   }
 
-  private def printStatements(statements: List[Statement], indentIndex: Int): String =
-    statements.map(s => printStatement(s, indentIndex)).mkString(config.statementSeparator)
+  private def printStatements(statements: List[Statement],
+                              indentIndex: Int): String =
+    statements
+      .map(s => printStatement(s, indentIndex))
+      .mkString(config.statementSeparator)
 
   def printBlock(block: Block, indentIndex: Int = 0): String = {
     config.blockOpener + printStatements(block.statements, indentIndex) + config.blockCloser
