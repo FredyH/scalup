@@ -18,7 +18,7 @@ object Printer {
 
 	val MinifyPrinterConfig = PrinterConfig(
 		statementSeparator = ";",
-		blockOpener = ";",
+		blockOpener = " ",
 		blockCloser = ";",
 		indentString = "",
 		listSeparator = ",",
