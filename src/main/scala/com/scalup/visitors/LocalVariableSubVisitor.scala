@@ -51,19 +51,19 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
   override def visitVariable(variable: Variable,
                              passthrough: LocalVarSubData,
                              global: Boolean = false): Variable =
-    if (!global) {
-      variable match {
-        case NamedVariable(name) =>
-          NamedVariable(passthrough.getSubNameOrOrig(name))
-        case PrefixedVariable(prefix, name) =>
-          PrefixedVariable(visitPrefixExpression(prefix, passthrough), name)
-        case IndexedVariable(prefix, expression) =>
-          IndexedVariable(
-            visitPrefixExpression(prefix, passthrough),
-            visitExpression(expression, passthrough)
-          )
-      }
-    } else super.visitVariable(variable, passthrough)
+    variable match {
+      case NamedVariable(name)
+          if !global || passthrough.nameSubs.contains(name) =>
+        NamedVariable(passthrough.getSubNameOrOrig(name))
+      case PrefixedVariable(prefix, name) if !global =>
+        PrefixedVariable(visitPrefixExpression(prefix, passthrough), name)
+      case IndexedVariable(prefix, expression) if !global =>
+        IndexedVariable(
+          visitPrefixExpression(prefix, passthrough),
+          visitExpression(expression, passthrough)
+        )
+      case _ => super.visitVariable(variable, passthrough)
+    }
 
   override def visitFunctionCall(call: FunctionCall,
                                  passthrough: LocalVarSubData): FunctionCall =
