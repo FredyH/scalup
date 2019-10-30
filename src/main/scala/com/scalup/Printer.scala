@@ -144,9 +144,11 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
           names.mkString(
             "local ",
             config.listSeparator,
-            wrapInPadding("=") + expressionList
-              .map(e => printExpression(e, indentIndex: Int))
-              .mkString(config.listSeparator)
+            if (expressionList.nonEmpty)
+              wrapInPadding("=") + expressionList
+                .map(e => printExpression(e, indentIndex: Int))
+                .mkString(config.listSeparator)
+            else ""
           )
         )
 

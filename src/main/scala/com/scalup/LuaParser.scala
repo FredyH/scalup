@@ -248,7 +248,7 @@ object LuaParser extends LuaLexer {
     case (list, opt) => ParameterList(list.map(Parameter), opt.isDefined)
   }
 
-  private def varArgsParameterList[_: P]: P[ParameterList] = P(`...`).map { _ => ParameterList(Nil, false) }
+  private def varArgsParameterList[_: P]: P[ParameterList] = P(`...`).map { _ => ParameterList(Nil, true) }
 
   private def parameterList[_: P]: P[ParameterList] = varArgsParameterList | parameterListWithVarArgs
 
