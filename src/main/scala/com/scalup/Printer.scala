@@ -21,8 +21,8 @@ object Printer {
     indentString = "",
     listSeparator = ",",
     padding = "",
-    conditionalOpener = "(",
-    conditionalCloser = ")",
+    conditionalOpener = " ",
+    conditionalCloser = " ",
     wrapConditions = false
   )
 
