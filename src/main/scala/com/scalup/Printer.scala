@@ -247,7 +247,10 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
       .mkString(config.statementSeparator)
 
   def printBlock(block: Block, indentIndex: Int = 0): String = {
-    config.blockOpener + printStatements(block.statements, indentIndex) + config.blockCloser
+    config.blockOpener + printStatements(block.statements, indentIndex) + (if (block.statements.nonEmpty)
+                                                                             config.blockCloser
+                                                                           else
+                                                                             "")
   }
 
 }
