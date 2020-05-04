@@ -143,8 +143,8 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
       case IfStatement(condition, body, elseIfs, elseBlock) =>
         val ifHeader = indent("if" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "then")
         val elseIfStrs = elseIfs.map{ elseIf =>
-          val elseIfHeader = indent("elseif" + config.conditionalOpener + printExpression(condition, indentIndex) + config.conditionalCloser + "then")
-          elseIfHeader + printBlock(body, indentIndex + 1)
+          val elseIfHeader = indent("elseif" + config.conditionalOpener + printExpression(elseIf.condition, indentIndex) + config.conditionalCloser + "then")
+          elseIfHeader + printBlock(elseIf.body, indentIndex + 1)
         }.mkString(config.statementSeparator)
         val elseStr = elseBlock.map { elseBlock =>
           indent("else") + printBlock(elseBlock, indentIndex + 1)
