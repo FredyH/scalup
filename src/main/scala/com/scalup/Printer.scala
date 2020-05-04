@@ -196,11 +196,11 @@ class Printer(config: PrinterConfig = PrinterConfig()) {
           .map { elseIf =>
             val elseIfHeader = indent(
               "elseif" + config.conditionalOpener + printExpression(
-                condition,
+                elseIf.condition,
                 indentIndex
               ) + config.conditionalCloser + "then"
             )
-            elseIfHeader + printBlock(body, indentIndex + 1)
+            elseIfHeader + printBlock(elseIf.body, indentIndex + 1)
           }
           .mkString(config.statementSeparator)
         val elseStr = elseBlock
