@@ -89,14 +89,14 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
               parameters = body.parameters.parameters
                 .map(p => Parameter(passthrough.subVarName(p.name)))
             ),
-            visitBlock(body.body, passthrough)
+            visitBlock(body.body, passthrough.clone())
           )
         )
 
       case LuaFalse => luaFalseVal
       case LuaTrue  => luaTrueVal
 
-      case _ => super.visitExpression(expression, passthrough)
+      case _ => super.visitExpression(expression, passthrough.clone())
     }
   }
 
@@ -106,10 +106,9 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
     statement match {
 
       case LocalDeclaration(names, expressionList) =>
-        val passthroughCopy = passthrough.clone
         LocalDeclaration(
-          names.map(passthrough.subVarName),
-          expressionList.map(visitExpression(_, passthroughCopy))
+          names.map(passthrough.clone().subVarName),
+          expressionList.map(visitExpression(_, passthrough.clone()))
         )
 
       case ForLoop(variableName, initialValue, upperBound, stepValue, block) =>
@@ -155,7 +154,7 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
 
   override def visitStatements(statements: List[Statement],
                                passthrough: LocalVarSubData): List[Statement] =
-    statements.map(s => visitStatement(s, passthrough))
+    statements.map(s => visitStatement(s, passthrough.clone()))
 
   override def visitBlock(block: Block, passthrough: LocalVarSubData): Block =
     Block(visitStatements(block.statements, passthrough.clone))
