@@ -25,6 +25,7 @@ object Compactor {
       "util",
       "math",
       "debug",
+      "file",
       "G",
       "util",
       "math",

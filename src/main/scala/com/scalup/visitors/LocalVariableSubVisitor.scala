@@ -7,8 +7,10 @@ import scala.collection.mutable
 // Walks the AST and replaces local variable names with ones from the supplied iterator. Used for minification or obfuscation
 
 object LocalVariableSubVisitor {
-  case class LocalVarSubData(var variableNames: Iterator[String],
-                             nameSubs: mutable.Map[String, String]) {
+  case class LocalVarSubData(
+    var variableNames: Iterator[String],
+    nameSubs: mutable.Map[String, String]
+  ) {
     override def clone: LocalVarSubData = {
       variableNames.duplicate match {
         case (i1, i2) =>
@@ -16,7 +18,13 @@ object LocalVariableSubVisitor {
           LocalVarSubData(i2, nameSubs.clone())
       }
     }
-
+    
+    def merge(newPassthrough: LocalVarSubData) = {
+      nameSubs ++= newPassthrough.nameSubs
+      0 to (nameSubs.keys.size - newPassthrough.nameSubs.keys.size) foreach { _ => variableNames.next() }
+      this
+    }
+    
     def subVarName(originalName: String): String = {
       if (originalName == "self")
         "self"
@@ -34,13 +42,10 @@ object LocalVariableSubVisitor {
     // Returns the variables substituted name or the originally passed name if there is no existing substitution
     def getSubNameOrOrig(varName: String): String =
       nameSubs.getOrElse(varName, varName)
-
   }
 }
 
-class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
-    extends TreeBuildVisitor[LocalVarSubData] {
-
+class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean) extends TreeBuildVisitor[LocalVarSubData] {
   val (luaTrueVal, luaFalseVal): (Expression, Expression) = {
     if (subTrueFalseLiterals) {
       (UnaryNot(UnaryNot(LuaNumber(1, "1"))), UnaryNot(LuaNumber(1, "1")))
@@ -48,9 +53,11 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
       (LuaTrue, LuaFalse)
   }
 
-  override def visitVariable(variable: Variable,
-                             passthrough: LocalVarSubData,
-                             global: Boolean = false): Variable =
+  override def visitVariable(
+    variable: Variable,
+    passthrough: LocalVarSubData,
+    global: Boolean = false
+  ): Variable =
     variable match {
       case NamedVariable(name)
           if !global || passthrough.nameSubs.contains(name) =>
@@ -65,8 +72,10 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
       case _ => super.visitVariable(variable, passthrough)
     }
 
-  override def visitFunctionCall(call: FunctionCall,
-                                 passthrough: LocalVarSubData): FunctionCall =
+  override def visitFunctionCall(
+    call: FunctionCall,
+    passthrough: LocalVarSubData
+  ): FunctionCall =
     call match {
       case f: FunctionCallWithoutSelf => super.visitFunctionCall(f, passthrough)
 
@@ -78,10 +87,11 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
         )
     }
 
-  override def visitExpression(expression: Expression,
-                               passthrough: LocalVarSubData): Expression = {
+  override def visitExpression(
+    expression: Expression,
+    passthrough: LocalVarSubData
+  ): Expression = {
     expression match {
-
       case FunctionExpression(body) =>
         FunctionExpression(
           FunctionBody(
@@ -89,27 +99,60 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
               parameters = body.parameters.parameters
                 .map(p => Parameter(passthrough.subVarName(p.name)))
             ),
-            visitBlock(body.body, passthrough)
+            visitBlock(body.body, passthrough.clone())
           )
         )
 
       case LuaFalse => luaFalseVal
       case LuaTrue  => luaTrueVal
 
-      case _ => super.visitExpression(expression, passthrough)
+      case _ => super.visitExpression(expression, passthrough.clone())
     }
   }
+      
+  def visitFunctionDefinition(
+    statement: FunctionDefinition,
+    passthrough: LocalVarSubData
+  ): (Statement, LocalVarSubData) = {
+    val passthroughClone = passthrough.clone
 
-  override def visitStatement(statement: Statement,
-                              passthrough: LocalVarSubData): Statement = {
+    val funcName = if (statement.local)
+      FunctionName(statement.name.name.splitAt(1) match {
+        case (head, rest) => passthroughClone.subVarName(head.head) +: rest
+      }, statement.name.withSelf)
+    else
+      FunctionName(statement.name.name.splitAt(1) match {
+        case (head, rest) =>
+          val name = passthroughClone.getSubNameOrOrig(head.head) +: rest
+          name
+      }, statement.name.withSelf)
 
+    passthrough.variableNames.next()
+    val funcDef = FunctionDefinition(
+      funcName,
+      FunctionBody(
+        statement.body.parameters.copy(
+          parameters = statement.body.parameters.parameters
+            .map(p => Parameter(passthrough.subVarName(p.name)))
+        ),
+        visitBlock(statement.body.body, passthrough)
+      ),
+      statement.local
+    )
+
+    (funcDef, passthroughClone)
+  }
+
+
+  override def visitStatement(
+    statement: Statement,
+    passthrough: LocalVarSubData
+  ): Statement = {
     statement match {
-
       case LocalDeclaration(names, expressionList) =>
-        val passthroughCopy = passthrough.clone
         LocalDeclaration(
-          names.map(passthrough.subVarName),
-          expressionList.map(visitExpression(_, passthroughCopy))
+          names.map(passthrough.clone().subVarName),
+          expressionList.map(visitExpression(_, passthrough.clone()))
         )
 
       case ForLoop(variableName, initialValue, upperBound, stepValue, block) =>
@@ -153,11 +196,24 @@ class LocalVariableSubVisitor(subTrueFalseLiterals: Boolean)
     }
   }
 
-  override def visitStatements(statements: List[Statement],
-                               passthrough: LocalVarSubData): List[Statement] =
-    statements.map(s => visitStatement(s, passthrough))
+  override def visitStatements(
+    statements: List[Statement],
+    passthrough: LocalVarSubData
+  ): List[Statement] =
+    statements.map {
+      case s: DoBlock => visitStatement(s, passthrough.clone)
+      case s: WhileLoop => visitStatement(s, passthrough.clone)
+      case s: RepeatLoop => visitStatement(s, passthrough.clone)
+      case s: IfStatement => visitStatement(s, passthrough.clone)
+      case s: ForLoop => visitStatement(s, passthrough.clone)
+      case s: ForEachLoop => visitStatement(s, passthrough.clone)
+      case s: FunctionDefinition =>
+        val (statement, clonedPassthrough) = visitFunctionDefinition(s, passthrough.clone)
+        passthrough.merge(clonedPassthrough)
+        statement
+      case s => visitStatement(s, passthrough)
+    }
 
   override def visitBlock(block: Block, passthrough: LocalVarSubData): Block =
     Block(visitStatements(block.statements, passthrough.clone))
-
 }
